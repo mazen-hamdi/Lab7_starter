@@ -1,6 +1,6 @@
 # Lab 7 – Unit & E2E Testing
 
-- **Author(s)**: Mohamed Hamdi, Jude Gamba
+- **Author(s)**: Mohamed Mazen Hamdi, Jude Gamba
 - **Repo link**: https://github.com/mazen-hamdi/Lab7_starter
 - **Screenshot**: ![](./expose/test-pass.png)
 
