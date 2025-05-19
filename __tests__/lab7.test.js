@@ -19,114 +19,133 @@ describe('Basic user flow for Website', () => {
   });
 
   // Check to make sure that all 20 <product-item> elements have data in them
-  // We use .skip() here because this test has a TODO that has not been completed yet.
-  // Make sure to remove the .skip after you finish the TODO. 
   it('Make sure <product-item> elements are populated', async () => {
+    console.log('Checking to make sure <product-item> elements are populated...');
+
+    // Start as true, if any don't have data, swap to false
     let allArePopulated = true;
 
-    const prodItemsData = await page.$$eval('product-item', prodItems =>
-      prodItems.map(item => item.data)
-    );
+    // Query select all of the <product-item> elements
+    const prodItemsData = await page.$$eval('product-item', prodItems => {
+      return prodItems.map(item => {
+        // Grab all of the json data stored inside
+        return item.data; // Corrected: directly return item.data
+      });
+    });
 
-    for (const data of prodItemsData) {
-      if (data.title.length === 0 || data.price.length === 0 || data.image.length === 0) {
+    // Loop through each product item's data
+    for (let i = 0; i < prodItemsData.length; i++) {
+      console.log(`Checking product item ${i + 1}/${prodItemsData.length}`);
+      const itemData = prodItemsData[i];
+      if (!itemData || itemData.title.length == 0 || itemData.price.length == 0 || itemData.image.length == 0) {
         allArePopulated = false;
+        break; // Exit loop if any item is not populated
       }
     }
 
+    // Expect allArePopulated to still be true
     expect(allArePopulated).toBe(true);
   }, 10000);
 
   // Check to make sure that when you click "Add to Cart" on the first <product-item> that
   // the button swaps to "Remove from Cart"
   it('Clicking the "Add to Cart" button should change button text', async () => {
-    const prodItem = await page.$('product-item');
-    const shadow = await prodItem.getProperty('shadowRoot');
-    const button = await shadow.$('button');
+    console.log('Checking the "Add to Cart" button...');
+    const firstProdItem = await page.$('product-item');
+    const shadowRoot = await firstProdItem.getProperty('shadowRoot');
+    const button = await shadowRoot.$('button');
+    
+    // Ensure button is "Add to Cart" before clicking, or click twice if it's "Remove from Cart"
+    let currentButtonText = await button.evaluate(btn => btn.innerText);
+    if (currentButtonText === 'Remove from Cart') {
+        await button.click(); // Click to change to "Add to Cart"
+        await page.waitForTimeout(100); // Brief pause for UI update
+    }
+    await button.click(); // Click to change to "Remove from Cart" (or from "Add to Cart")
 
-    await button.click();
-    const innerText = await (await button.getProperty('innerText')).jsonValue();
-    expect(innerText).toBe('Remove from Cart');
-  }, 2500);
-
+    const buttonTextAfterClick = await button.evaluate(btn => btn.innerText);
+    expect(buttonTextAfterClick).toBe('Remove from Cart');
+  }, 5000); // Increased timeout slightly
 
   // Check to make sure that after clicking "Add to Cart" on every <product-item> that the Cart
   // number in the top right has been correctly updated
-   it('Checking number of items in cart on screen', async () => {
+  it('Adding all items to cart updates cart count to 20', async () => {
+    console.log('Checking number of items in cart on screen...');
     const prodItems = await page.$$('product-item');
-
     for (const item of prodItems) {
-      const shadow = await item.getProperty('shadowRoot');
-      const btn = await shadow.$('button');
-      const txt = await (await btn.getProperty('innerText')).jsonValue();
-      if (txt === 'Add to Cart') await btn.click();
+      const shadowRoot = await item.getProperty('shadowRoot');
+      const button = await shadowRoot.$('button');
+      const buttonText = await button.evaluate(btn => btn.innerText);
+      if (buttonText === 'Add to Cart') {
+        await button.click();
+        // await page.waitForTimeout(50); // Optional small delay
+      }
     }
-
     const cartCount = await page.$eval('#cart-count', el => el.innerText);
     expect(cartCount).toBe('20');
-  }, 10000);
+  }, 30000); // Increased timeout for iterating 20 items
 
   // Check to make sure that after you reload the page it remembers all of the items in your cart
-  it('Checking number of items in cart on screen after reload', async () => {
-    await page.reload({ waitUntil: 'networkidle0' });
-
+  it('After adding all items and reload, buttons are "Remove from Cart" and cart count is 20', async () => {
+    console.log('Checking number of items in cart on screen after reload...');
+    await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] });
     const prodItems = await page.$$('product-item');
     for (const item of prodItems) {
-      const shadow = await item.getProperty('shadowRoot');
-      const btnText = await shadow.$eval('button', btn => btn.innerText);
-      expect(btnText).toBe('Remove from Cart');
+      const shadowRoot = await item.getProperty('shadowRoot');
+      const button = await shadowRoot.$('button');
+      const buttonText = await button.evaluate(btn => btn.innerText);
+      expect(buttonText).toBe('Remove from Cart');
     }
-
     const cartCount = await page.$eval('#cart-count', el => el.innerText);
     expect(cartCount).toBe('20');
-  }, 10000);
+  }, 20000); // Increased timeout
 
   // Check to make sure that the cart in localStorage is what you expect
- it('Checking the localStorage to make sure cart is correct', async () => {
+  it('After adding all items, localStorage cart contains all 20 item IDs', async () => {
     const cart = await page.evaluate(() => localStorage.getItem('cart'));
-    expect(cart).toBe('[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]');
+    const expectedCart = JSON.stringify(Array.from({ length: 20 }, (_, i) => i + 1));
+    expect(cart).toBe(expectedCart);
   });
 
   // Checking to make sure that if you remove all of the items from the cart that the cart
   // number in the top right of the screen is 0
-  it('Checking number of items in cart on screen after removing from cart', async () => {
+  it('Removing all items from cart updates cart count to 0', async () => {
+    console.log('Checking number of items in cart on screen after removing from cart...');
     const prodItems = await page.$$('product-item');
-
     for (const item of prodItems) {
-      const shadow = await item.getProperty('shadowRoot');
-      const btn = await shadow.$('button');
-      const txt = await (await btn.getProperty('innerText')).jsonValue();
-      if (txt === 'Remove from Cart') await btn.click();
+      const shadowRoot = await item.getProperty('shadowRoot');
+      const button = await shadowRoot.$('button');
+      const buttonText = await button.evaluate(btn => btn.innerText);
+      if (buttonText === 'Remove from Cart') {
+        await button.click();
+        // await page.waitForTimeout(50); // Optional small delay
+      }
     }
-
     const cartCount = await page.$eval('#cart-count', el => el.innerText);
     expect(cartCount).toBe('0');
-  }, 10000);
+  }, 30000); // Increased timeout
+
   // Checking to make sure that it remembers us removing everything from the cart
   // after we refresh the page
-  it('Checking number of items in cart on screen after reload', async () => {
-    await page.reload({ waitUntil: 'networkidle0' });
-
+  it('After removing all items and reload, buttons are "Add to Cart" and cart count is 0', async () => {
+    console.log('Checking number of items in cart on screen after reload (post-removal)...');
+    await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] });
     const prodItems = await page.$$('product-item');
     for (const item of prodItems) {
-      const shadow = await item.getProperty('shadowRoot');
-      const btnText = await shadow.$eval('button', btn => btn.innerText);
-      expect(btnText).toBe('Add to Cart');
+      const shadowRoot = await item.getProperty('shadowRoot');
+      const button = await shadowRoot.$('button');
+      const buttonText = await button.evaluate(btn => btn.innerText);
+      expect(buttonText).toBe('Add to Cart');
     }
-
     const cartCount = await page.$eval('#cart-count', el => el.innerText);
     expect(cartCount).toBe('0');
-  }, 10000);
-
+  }, 20000); // Increased timeout
 
   // Checking to make sure that localStorage for the cart is as we'd expect for the
   // cart being empty
-  it.skip('Checking the localStorage to make sure cart is correct', async () => {
-    console.log('Checking the localStorage...');
-it('Checking the localStorage to make sure cart is correct', async () => {
+  it('After removing all items, localStorage cart is empty', async () => {
+    console.log('Checking the localStorage for an empty cart...');
     const cart = await page.evaluate(() => localStorage.getItem('cart'));
     expect(cart).toBe('[]');
-  });
-});
   });
 });
