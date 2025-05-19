@@ -13,7 +13,7 @@
    → **No.** That’s a job for a quick unit test; E2E tests are heavier because they spin up a browser.
 
 3. **Difference between Lighthouse _navigation_ and _snapshot_ modes?**  
-   → **Navigation** measures the full page‑load journey (performance metrics, layout shifts, etc.); **Snapshot** freezes the current DOM and checks accessibility & best‑practices at that instant.
+   → **Navigation** measures the full page‑load journey (performance metrics, layout shifts, etc.); **Snapshot** freezes the current DOM and checks accessibility & best‑practices at that instant. With snapshot, the developer is unable to analyze JS performance or any changes to the DOM tree.
 
 4. **Three simple improvements suggested by the Lighthouse report:**  
    - Serve images in a modern format such as **WebP**.  
